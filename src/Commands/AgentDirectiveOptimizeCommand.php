@@ -1,6 +1,6 @@
 <?php
 
-namespace KngBowser\LaravelAgentOptimizer\Commands;
+namespace kngbwsr\LaravelAgentOptimizer\Commands;
 
 use Illuminate\Console\Attributes\Description;
 use Illuminate\Console\Attributes\Signature;

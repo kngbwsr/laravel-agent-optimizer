@@ -32,7 +32,7 @@ Works seamlessly with [Laravel Boost](https://github.com/laravel-boost/boost)-ge
 Install the package via Composer:
 
 ```bash
-composer require kngbowser/laravel-agent-optimizer
+composer require kngbwsr/laravel-agent-optimizer
 ```
 
 Laravel's auto-discovery will register the service provider automatically.
