@@ -1,9 +1,9 @@
 <?php
 
-namespace kngbwsr\LaravelAgentOptimizer\Providers;
+namespace Kngbwsr\LaravelAgentOptimizer\Providers;
 
-use kngbwsr\LaravelAgentOptimizer\Commands\AgentDirectiveOptimizeCommand;
-use kngbwsr\LaravelAgentOptimizer\Commands\AgentOptimizerInstallCommand;
+use Kngbwsr\LaravelAgentOptimizer\Commands\AgentDirectiveOptimizeCommand;
+use Kngbwsr\LaravelAgentOptimizer\Commands\AgentOptimizerInstallCommand;
 use Illuminate\Console\Events\CommandFinished;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\ServiceProvider;

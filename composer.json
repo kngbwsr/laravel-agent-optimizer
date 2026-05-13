@@ -18,13 +18,13 @@
     },
     "autoload": {
         "psr-4": {
-            "kngbwsr\\LaravelAgentOptimizer\\": "src/"
+            "Kngbwsr\\LaravelAgentOptimizer\\": "src/"
         }
     },
     "extra": {
         "laravel": {
             "providers": [
-                "kngbwsr\\LaravelAgentOptimizer\\Providers\\AgentOptimizerServiceProvider"
+                "Kngbwsr\\LaravelAgentOptimizer\\Providers\\AgentOptimizerServiceProvider"
             ]
         }
     },
