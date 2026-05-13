@@ -950,7 +950,7 @@
   *
   * To publish the configuration file for customisation:
   *
-  *   php artisan vendor:publish --tag=ai-rules-config
+  *   php artisan vendor:publish --tag=agent-optimizer-config
   */
   class AgentOptimizerServiceProvider extends ServiceProvider
   {
@@ -974,7 +974,7 @@
       {
           $this->publishes(
               [config_path('agent-optimizer.php') => config_path('agent-optimizer.php')],
-              'ai-rules-config'
+              'agent-optimizer-config'
           );
 
           if ($this->app->runningInConsole()) {
@@ -1024,6 +1024,6 @@
 
 ### Create publishable `config\agent-optimizer.php`
   ```php
-  php artisan vendor:publish --tag=ai-rules-config
+  php artisan vendor:publish --tag=agent-optimizer-config
   ```
 

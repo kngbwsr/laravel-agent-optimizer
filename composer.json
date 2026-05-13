@@ -1,12 +1,32 @@
 {
     "name": "kngbowser/laravel-agent-optimizer",
     "description": "A package to optimize your agent files by moving guidelines and other bloat to `.ai/` subdirectories",
-    "type": "project",
+    "type": "library",
+    "license": "mit",
+    "authors": [
+        {
+            "name": "KngBowser"
+        }
+    ],
     "require": {
-        "laravel/framework": "^13.0"},
+        "php": "^8.2",
+        "illuminate/console": "^10.0|^11.0",
+        "illuminate/support": "^10.0|^11.0"
+    },
     "require-dev": {
         "laravel/boost": "^2.4"
     },
-    "license": "mit",
+    "autoload": {
+        "psr-4": {
+            "KngBowser\\LaravelAgentOptimizer\\": "src/"
+        }
+    },
+    "extra": {
+        "laravel": {
+            "providers": [
+                "KngBowser\\LaravelAgentOptimizer\\Providers\\AgentOptimizerServiceProvider"
+            ]
+        }
+    },
     "minimum-stability": "stable"
 }
