@@ -1,0 +1,12 @@
+{
+    "name": "kngbowser/laravel-agent-optimizer",
+    "description": "A package to optimize your agent files by moving guidelines and other bloat to `.ai/` subdirectories",
+    "type": "project",
+    "require": {
+        "laravel/framework": "^13.0"},
+    "require-dev": {
+        "laravel/boost": "^2.4"
+    },
+    "license": "mit",
+    "minimum-stability": "stable"
+}
