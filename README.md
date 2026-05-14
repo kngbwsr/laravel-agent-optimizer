@@ -25,7 +25,7 @@ Works seamlessly with [Laravel Boost](https://github.com/laravel-boost/boost)-ge
 ## Requirements
 
 - PHP 8.2+
-- Laravel 10 or 11
+- Laravel 13+
 
 ---
 
