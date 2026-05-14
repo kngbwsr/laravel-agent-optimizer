@@ -6,8 +6,8 @@ use Illuminate\Console\Attributes\Description;
 use Illuminate\Console\Attributes\Signature;
 use Illuminate\Console\Command;
 
-#[Signature('agent:optimize {--root= : Root directory to scan (defaults to base_path())} {--min-lines= : Minimum section line count before extraction (overrides config line_threshold)} {--dry-run : Show what would be extracted without writing files}')]
-#[Description('Extract long guideline sections from agent directive files into modular .ai/rules/ files')]
+#[Signature('optimizeAgents:optimize {--root= : Root directory to scan (defaults to base_path())} {--min-lines= : Minimum section line count before extraction (overrides config line_threshold)} {--dry-run : Show what would be extracted without writing files}')]
+#[Description('Extract long guideline sections from agent directive files into modular rule files')]
 class AgentDirectiveOptimizeCommand extends Command
 {
   /**
@@ -50,18 +50,18 @@ class AgentDirectiveOptimizeCommand extends Command
       : (int) config('agent-optimizer.line_threshold', 5);
 
     $dryRun = (bool) $this->option('dry-run');
-    $rulesFolder = trim((string) config('agent-optimizer.base_path', '.ai/rules'), '/\\');
-    $rulesDir = $root . '/' . $rulesFolder;
-
-    if (! $dryRun && ! is_dir($rulesDir)) {
-      mkdir($rulesDir, 0755, true);
-    }
+    $basePath = trim((string) config('agent-optimizer.base_path', '.ai/rules'), '/\\');
+    $rulesDir = $root . '/' . $basePath . '/agent-optimized';
 
     $pruned = $this->pruneRulesDirectory($rulesDir, $dryRun);
 
-    if ($pruned > 0) {
+    if (! $dryRun) {
+      mkdir($rulesDir, 0755, true);
+    }
+
+    if ($pruned) {
       $verb = $dryRun ? 'Would remove' : 'Removed';
-      $this->line("<comment>Preflight:</comment> {$verb} {$pruned} previously generated file(s) from {$rulesFolder}.");
+      $this->line("<comment>Preflight:</comment> {$verb} the agent-optimized folder.");
       $this->newLine();
     }
 
@@ -88,7 +88,7 @@ class AgentDirectiveOptimizeCommand extends Command
     }
 
     if (! empty($extractions)) {
-      $this->line('<comment>Rules Directory:</comment> ' . $rulesFolder);
+      $this->line('<comment>Rules Directory:</comment> ' . $basePath . '/agent-optimized');
       $this->newLine();
       $this->line('<info>Optimizations:</info>');
       foreach ($extractions as $entry) {
@@ -117,63 +117,38 @@ class AgentDirectiveOptimizeCommand extends Command
       // -------------------------------------------------------------------------
 
   /**
-   * Delete any previously generated rule and subsection files from the rules
-   * directory, then remove any empty subdirectories that remain.
-   *
-   * Only files whose names begin with the configured rule_file_prefix or
-   * subsection_file_prefix are removed, so any hand-authored files sitting
-   * alongside them are left untouched.
-   *
-   * Returns the count of files deleted (or that would be deleted in dry-run).
+   * Remove the entire agent-optimized folder so every run starts from a clean
+   * slate. Returns true if the folder existed (and was removed in a live run).
    */
-  protected function pruneRulesDirectory(string $rulesDir, bool $dryRun): int
+  protected function pruneRulesDirectory(string $rulesDir, bool $dryRun): bool
   {
     if (! is_dir($rulesDir)) {
-      return 0;
+      return false;
     }
 
-    $rulePrefix       = (string) config('agent-optimizer.rule_file_prefix', '_rule_');
-    $subsectionPrefix = (string) config('agent-optimizer.subsection_file_prefix', '_subsection_');
-    $deleted          = 0;
+    if (! $dryRun) {
+      $this->deleteDirectory($rulesDir);
+    }
 
+    return true;
+  }
+
+  /**
+   * Recursively delete a directory and all of its contents.
+   */
+  protected function deleteDirectory(string $dir): void
+  {
     $iterator = new \RecursiveIteratorIterator(
-      new \RecursiveDirectoryIterator($rulesDir, \FilesystemIterator::SKIP_DOTS),
-      \RecursiveIteratorIterator::LEAVES_ONLY
+      new \RecursiveDirectoryIterator($dir, \FilesystemIterator::SKIP_DOTS),
+      \RecursiveIteratorIterator::CHILD_FIRST
     );
 
     foreach ($iterator as $item) {
       /** @var \SplFileInfo $item */
-      if (! $item->isFile()) {
-        continue;
-      }
-
-      $basename = $item->getBasename();
-
-      if (! str_starts_with($basename, $rulePrefix) && ! str_starts_with($basename, $subsectionPrefix)) {
-        continue;
-      }
-
-      if ($dryRun) {
-        $this->line('  <comment>[dry-run] Would delete:</comment> ' . $item->getPathname());
-      } else {
-        unlink($item->getPathname());
-      }
-
-      $deleted++;
+      $item->isDir() ? rmdir($item->getPathname()) : unlink($item->getPathname());
     }
 
-    // After deleting files, remove any subdirectories that are now empty.
-    if (! $dryRun) {
-      foreach (glob($rulesDir . '/*', GLOB_ONLYDIR) ?: [] as $subDir) {
-        $remaining = array_diff((array) scandir($subDir), ['.', '..']);
-
-        if (empty($remaining)) {
-          rmdir($subDir);
-        }
-      }
-    }
-
-    return $deleted;
+    rmdir($dir);
   }
 
       // -------------------------------------------------------------------------
@@ -925,7 +900,7 @@ class AgentDirectiveOptimizeCommand extends Command
    */
   protected function rulesFolder(): string
   {
-    return trim((string) config('agent-optimizer.base_path', '.ai/rules'), '/\\');
+    return trim((string) config('agent-optimizer.base_path', '.ai/rules'), '/\\') . '/agent-optimized';
   }
 
   /**

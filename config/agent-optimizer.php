@@ -7,16 +7,18 @@ return [
       | Base Path
       |--------------------------------------------------------------------------
       |
-      | The directory (relative to base_path()) where all extracted rule files
-      | will be written. The directory is created automatically if it does not
-      | exist. Individual rule files are placed directly in this directory.
-      | When a section is extracted using a nested strategy, a sub-directory
-      | named after the rule slug is also created inside this path.
+      | The parent directory (relative to base_path()) that holds the package's
+      | dedicated output folder. The package always creates a fixed sub-folder
+      | named "agent-optimized" inside this path and writes all extracted rule
+      | files there.
       |
-      | Example: '.ai/rules' → extracted files live at <project>/.ai/rules/
+      | Example: '.ai/rules' → extracted files live at <project>/.ai/rules/agent-optimized/
+      |
+      | The preflight step on each run deletes and recreates the agent-optimized
+      | folder entirely, ensuring no stale files remain when config changes.
       |
       */
-  'base_path' => '.ai/rules/agent-optimizer/',
+  'base_path' => '.ai/rules',
 
   /*
       |--------------------------------------------------------------------------
@@ -100,14 +102,7 @@ return [
       |   ],
       |
       */
-  'exceptions' => [
-    '.ai/_app-directive rules',
-    '.ai/laravel-filament-directive rules',
-    'foundation rules',
-    'boost rules',
-    'php rules',
-    'laravel/core rules',
-  ],
+  'exceptions' => [],
 
   /*
       |--------------------------------------------------------------------------
@@ -231,8 +226,8 @@ return [
       |--------------------------------------------------------------------------
       |
       | When true, the service provider registers a listener on the
-      | CommandFinished event that automatically runs `agent:optimize` after
-      | `boost:update` or `boost:install` completes.
+      | CommandFinished event that automatically runs `optimizeAgents:optimize`
+      | after `boost:update` or `boost:install` completes.
       |
       | Set to false to disable the listener entirely and run the command
       | manually (or via your own composer scripts).
@@ -245,8 +240,8 @@ return [
       | Boost Trigger Commands
       |--------------------------------------------------------------------------
       |
-      | The Artisan command names that trigger an automatic `agent:optimize`
-      | run when `auto_run_after_boost` is true. Add any additional Boost-like
+      | The Artisan command names that trigger an automatic
+      | `optimizeAgents:optimize` run when `auto_run_after_boost` is true. Add any additional Boost-like
       | commands here if your workflow uses custom wrappers around the standard
       | Boost commands.
       |
@@ -273,29 +268,6 @@ return [
       |
       */
   'boost_wrapper_tag' => 'laravel-boost-guidelines',
-
-  /*
-      |--------------------------------------------------------------------------
-      | Manage Composer Scripts
-      |--------------------------------------------------------------------------
-      |
-      | When true, the service provider will ensure that the line
-      |
-      |   "@php artisan agent:optimize --ansi"
-      |
-      | is present in the `post-update-cmd` array of your application's
-      | composer.json. When false (or when the key is absent), the line is
-      | removed if it exists.
-      |
-      | The composer.json file is only written when a change is actually needed.
-      | This action runs once per console bootstrap, so it is lightweight.
-      |
-      | Note: enabling this will re-encode your composer.json through PHP's
-      | json_encode, which normalises indentation to 4 spaces and may reorder
-      | nothing but will standardise whitespace.
-      |
-      */
-  'manage_composer_scripts' => false,
 
   /*
       |--------------------------------------------------------------------------

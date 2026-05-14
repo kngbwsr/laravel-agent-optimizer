@@ -2,12 +2,13 @@
 
 A Laravel package that optimizes AI agent directive files by extracting large guideline sections into modular rule files, keeping your top-level agent directives lean and focused.
 
-Works seamlessly with [Laravel Boost](https://github.com/laravel-boost/boost)-generated agent directive files and automatically re-runs after `boost:update` or `boost:install`.
+Works seamlessly with [Laravel Boost](https://github.com/laravel-boost/boost)-generated agent directive files and automatically re-runs after configured trigger commands (e.g. `boost:update`, `boost:install`).
 
 ---
 
 ## Features
 
+- **Dedicated output folder** — all generated files live inside a single `agent-optimized/` folder, making cleanup trivial and preventing stale files when config changes
 - **Automatic section extraction** — scans `*.md` agent directive files for `=== title ===` sections and moves qualifying sections to dedicated rule files
 - **Five extraction strategies** — `full_section`, `nested_full`, `nested_subsections`, `nested_split`, and `auto` to suit any section structure
 - **Per-section strategy overrides** — apply a different strategy to individual sections without changing the global default
@@ -17,8 +18,9 @@ Works seamlessly with [Laravel Boost](https://github.com/laravel-boost/boost)-ge
 - **Exception list** — protect specific sections from ever being extracted
 - **Dry-run mode** — preview what would be extracted without writing any files
 - **Laravel Boost integration** — automatically re-optimizes after configured trigger commands (default: `boost:update`, `boost:install`)
-- **Composer script management** — `agent:install` adds/removes the `post-update-cmd` entry; or set `manage_composer_scripts => true` to automate it
-- **Laravel auto-discovery** — zero manual registration required for Laravel 10+
+- **One-step install command** — `optimizeAgents:install` publishes the config and wires up `composer.json` in a single step
+- **Reset command** — `optimizeAgents:reset` removes all generated files and re-runs Boost without re-triggering optimization
+- **Laravel auto-discovery** — zero manual registration required for Laravel 13+
 
 ---
 
@@ -26,6 +28,7 @@ Works seamlessly with [Laravel Boost](https://github.com/laravel-boost/boost)-ge
 
 - PHP 8.2+
 - Laravel 13+
+- [Laravel Boost](https://github.com/laravel-boost/boost) (required for the `optimizeAgents:reset` command and auto-run integration)
 
 ---
 
@@ -39,40 +42,55 @@ composer require kngbwsr/laravel-agent-optimizer
 
 Laravel's auto-discovery will register the service provider automatically.
 
-### Publish the configuration file
+### One-step setup
+
+Run the install command to publish the config file and add the `post-update-cmd` entry to `composer.json` in one step:
 
 ```bash
-php artisan vendor:publish --tag=agent-optimizer-config
+php artisan optimizeAgents:install
 ```
 
-This creates `config/agent-optimizer.php` in your application.
+This does two things:
+1. Publishes `config/agent-optimizer.php` to your application (skipped if already published)
+2. Adds `@php artisan optimizeAgents:optimize --ansi` to the `post-update-cmd` array in `composer.json`
 
-### Optional: add the Composer post-update-cmd script
-
-Run the install command to automatically add `agent:optimize` to your `composer.json` `post-update-cmd`:
+To remove the `post-update-cmd` entry later:
 
 ```bash
-php artisan agent:install
+php artisan optimizeAgents:install --remove
 ```
 
-To remove the entry later:
+> **Note:** Auto-discovery means the package is fully functional before you run `optimizeAgents:install`. The command is a convenience for initial project setup only — it combines the config publish and the `composer.json` edit into a single step.
 
-```bash
-php artisan agent:install --remove
+---
+
+## Output folder
+
+All generated files are written to a dedicated `agent-optimized/` folder inside your configured `base_path`:
+
+```
+{base_path}/
+└── agent-optimized/
+    ├── _rule_my-section.md
+    └── _rule_another-section/
+        ├── _subsection_part-one.md
+        └── _subsection_part-two.md
 ```
 
-Alternatively, set `manage_composer_scripts => true` in `config/agent-optimizer.php` and the service provider will manage the entry automatically on every console bootstrap.
+The preflight step at the start of each `optimizeAgents:optimize` run **deletes and recreates the entire `agent-optimized/` folder**. This guarantees no stale files are left behind when config settings change between runs.
 
 ---
 
 ## Configuration
 
-After publishing, `config/agent-optimizer.php` exposes the following options:
+After running `optimizeAgents:install` (or `php artisan vendor:publish --tag=agent-optimizer-config`), `config/agent-optimizer.php` exposes the following options:
 
 ### Paths & file discovery
 
 ```php
-// Directory (relative to base_path()) where extracted rule files are written.
+// Directory (relative to base_path()) used as the parent for the dedicated
+// agent-optimized/ output folder. All extracted files are written to
+// {base_path}/agent-optimized/.
 'base_path' => '.ai/rules',
 
 // Directories scanned for *.md agent directive files (relative to base_path()).
@@ -100,10 +118,7 @@ After publishing, `config/agent-optimizer.php` exposes the following options:
 
 ```php
 // Section titles that are NEVER extracted (case-sensitive, exact match).
-'exceptions' => [
-    '.ai/_app-directive rules',
-    'foundation rules',
-],
+'exceptions' => [],
 
 // Minimum body line count a section must exceed to be eligible for extraction.
 // The --min-lines CLI flag overrides this at runtime.
@@ -182,11 +197,11 @@ Example — different labels per strategy:
 ### Laravel Boost integration
 
 ```php
-// When true, agent:optimize runs automatically after any command listed in
-// boost_trigger_commands via a CommandFinished event listener.
+// When true, optimizeAgents:optimize runs automatically after any command listed
+// in boost_trigger_commands via a CommandFinished event listener.
 'auto_run_after_boost' => true,
 
-// Artisan commands that trigger the automatic agent:optimize re-run.
+// Artisan commands that trigger the automatic optimizeAgents:optimize re-run.
 // Add custom wrappers around standard Boost commands here if needed.
 'boost_trigger_commands' => [
     'boost:update',
@@ -196,10 +211,6 @@ Example — different labels per strategy:
 // XML-like tag name that Laravel Boost wraps its generated content block with.
 // Change only if you use a custom Boost fork with a different tag name.
 'boost_wrapper_tag' => 'laravel-boost-guidelines',
-
-// When true, the service provider ensures @php artisan agent:optimize --ansi
-// is present in composer.json post-update-cmd on every console bootstrap.
-'manage_composer_scripts' => false,
 ```
 
 ---
@@ -209,15 +220,15 @@ Example — different labels per strategy:
 ### Basic run
 
 ```bash
-php artisan agent:optimize
+php artisan optimizeAgents:optimize
 ```
 
-Scans all configured `source_directories` for agent directive Markdown files, extracts qualifying sections to `base_path`, and replaces each extracted block with a configurable reference placeholder.
+Scans all configured `source_directories` for agent directive Markdown files, extracts qualifying sections to `{base_path}/agent-optimized/`, and replaces each extracted block with a configurable reference placeholder.
 
 ### Preview without writing files
 
 ```bash
-php artisan agent:optimize --dry-run
+php artisan optimizeAgents:optimize --dry-run
 ```
 
 Reports every section that *would* be extracted without modifying any file.
@@ -225,7 +236,7 @@ Reports every section that *would* be extracted without modifying any file.
 ### Override the root directory
 
 ```bash
-php artisan agent:optimize --root=/path/to/project
+php artisan optimizeAgents:optimize --root=/path/to/project
 ```
 
 Useful when running the command outside the project root.
@@ -233,7 +244,7 @@ Useful when running the command outside the project root.
 ### Override the minimum line threshold
 
 ```bash
-php artisan agent:optimize --min-lines=10
+php artisan optimizeAgents:optimize --min-lines=10
 ```
 
 Overrides `line_threshold` from config for this run only.
@@ -241,19 +252,40 @@ Overrides `line_threshold` from config for this run only.
 ### Combined example
 
 ```bash
-php artisan agent:optimize --min-lines=8 --dry-run
+php artisan optimizeAgents:optimize --min-lines=8 --dry-run
 ```
+
+---
+
+## Reset
+
+```bash
+php artisan optimizeAgents:reset
+```
+
+Performs a clean reset of the optimizer's output:
+
+1. Deletes the entire `agent-optimized/` folder and all files within it
+2. Runs the first configured `boost_trigger_commands` entry (default: `boost:update`) so Boost regenerates the original agent directive files
+3. **Does not** re-run `optimizeAgents:optimize` afterwards, even if `auto_run_after_boost` is `true`
+
+Use reset when:
+
+- You want to return agent directive files to their unoptimized state
+- You have changed structural config options (e.g. `base_path`, `rule_file_prefix`) and need a clean slate before re-running
+- You are debugging the optimizer's output
 
 ---
 
 ## How it works
 
-1. The command scans each configured directory for `*.md` files that contain at least one `=== title ===` section boundary.
-2. Each section is parsed and checked against the configured `exceptions` list and `line_threshold`.
-3. The configured extraction strategy (global or per-section override) determines how the section is extracted:
-   - A rule file is written to `base_path` using the configured `rule_file_prefix` and `rule_file_extension`.
-   - The original section body is replaced with a reference placeholder using the configured pretext label and the `base_path`-relative path.
-4. If the source file was modified it is written back to disk.
+1. **Preflight:** the entire `{base_path}/agent-optimized/` folder is deleted and will be recreated fresh — no stale files from previous config states are ever left behind.
+2. The command scans each configured directory for `*.md` files that contain at least one `=== title ===` section boundary.
+3. Each section is parsed and checked against the configured `exceptions` list and `line_threshold`.
+4. The configured extraction strategy (global or per-section override) determines how the section is extracted:
+   - A rule file is written to `{base_path}/agent-optimized/` using the configured `rule_file_prefix` and `rule_file_extension`.
+   - The original section body is replaced with a reference placeholder using the configured pretext label and the file path.
+5. If the source file was modified it is written back to disk.
 
 ### Extraction strategies
 
@@ -264,6 +296,14 @@ php artisan agent:optimize --min-lines=8 --dry-run
 | `nested_subsections` | Qualifying sub-headers extracted individually into a subdirectory. The main header and its direct body stay in the source file; each sub-header is replaced with an inline reference. |
 | `nested_split` | Like `nested_subsections` but the main section body is also extracted to its own root-level rule file. Only the header title and sub-header references remain in-place. |
 | `auto` | No sub-headers detected → `full_section`. Sub-headers detected → strategy from `auto_nested_strategy` (default `nested_full`). |
+
+### Boost integration detail
+
+The `auto_run_after_boost` listener fires on the `CommandFinished` event after any command listed in `boost_trigger_commands`. This keeps extracted rule files in sync whenever Boost regenerates your agent directive files from Artisan.
+
+The `post-update-cmd` entry added by `optimizeAgents:install` handles the case where `composer update` itself triggers a Boost update cycle.
+
+`optimizeAgents:reset` suppresses the `auto_run_after_boost` listener for the boost run it triggers, so the reset leaves files in a clean unoptimized state rather than immediately re-optimizing.
 
 ---
 

@@ -6,20 +6,28 @@ use Illuminate\Console\Attributes\Description;
 use Illuminate\Console\Attributes\Signature;
 use Illuminate\Console\Command;
 
-#[Signature('agent:install {--remove : Remove the agent:optimize entry from post-update-cmd instead of adding it}')]
-#[Description('Add or remove the agent:optimize post-update-cmd entry in composer.json')]
+#[Signature('optimizeAgents:install {--remove : Remove the optimizeAgents:optimize entry from post-update-cmd instead of adding it}')]
+#[Description('Publish the config file and add/remove the optimizeAgents:optimize post-update-cmd entry in composer.json')]
 class AgentOptimizerInstallCommand extends Command
 {
   /**
    * The composer script line this command manages.
    */
-  protected const SCRIPT_LINE = '@php artisan agent:optimize --ansi';
+  protected const SCRIPT_LINE = '@php artisan optimizeAgents:optimize --ansi';
 
   /**
    * Execute the console command.
    */
   public function handle(): int
   {
+    $remove = (bool) $this->option('remove');
+
+    // Step 1: publish config (only on install, not on --remove).
+    if (! $remove) {
+      $this->publishConfig();
+    }
+
+    // Step 2: manage the composer.json post-update-cmd entry.
     $composerPath = base_path('composer.json');
 
     if (! file_exists($composerPath)) {
@@ -44,8 +52,6 @@ class AgentOptimizerInstallCommand extends Command
 
       return self::FAILURE;
     }
-
-    $remove = (bool) $this->option('remove');
 
     [$changed, $composer] = $remove
       ? $this->removeScript($composer)
@@ -78,6 +84,30 @@ class AgentOptimizerInstallCommand extends Command
     }
 
     return self::SUCCESS;
+  }
+
+  /**
+   * Publish the config file if it has not already been published.
+   */
+  protected function publishConfig(): void
+  {
+    $destination = config_path('agent-optimizer.php');
+
+    if (file_exists($destination)) {
+      $this->line('Config already published — skipping.');
+
+      return;
+    }
+
+    $source = __DIR__ . '/../../config/agent-optimizer.php';
+
+    if (! copy($source, $destination)) {
+      $this->warn('Could not publish config/agent-optimizer.php — check directory permissions.');
+
+      return;
+    }
+
+    $this->info('Published config/agent-optimizer.php');
   }
 
   /**
