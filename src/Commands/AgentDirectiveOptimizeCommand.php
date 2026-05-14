@@ -191,6 +191,7 @@ class AgentDirectiveOptimizeCommand extends Command
           $body,
           $section['raw'],
           $slug,
+          $strategy,
           $rulesDir,
           $dryRun,
           $filename,
@@ -217,11 +218,16 @@ class AgentDirectiveOptimizeCommand extends Command
 
     if (! $dryRun && $modified !== $workingContent) {
       $newContent = $hasWrapper
-        ? preg_replace(
-          '/<laravel-boost-guidelines>.*?<\/laravel-boost-guidelines>/s',
-          "<laravel-boost-guidelines>\n" . rtrim($modified) . "\n</laravel-boost-guidelines>",
-          $content
-        )
+        ? (function () use ($content, $modified): string {
+          $tag = (string) config('agent-optimizer.boost_wrapper_tag', 'laravel-boost-guidelines');
+          $quotedTag = preg_quote($tag, '/');
+
+          return (string) preg_replace(
+            "/<{$quotedTag}>.*?<\\/{$quotedTag}>/s",
+            "<{$tag}>\n" . rtrim($modified) . "\n</{$tag}>",
+            $content
+          );
+        })()
         : $modified;
 
       file_put_contents($filePath, (string) $newContent);
@@ -243,6 +249,7 @@ class AgentDirectiveOptimizeCommand extends Command
     string $body,
     string $raw,
     string $slug,
+    string $strategy,
     string $rulesDir,
     bool $dryRun,
     string $filename,
@@ -250,8 +257,9 @@ class AgentDirectiveOptimizeCommand extends Command
     array &$extractions,
     string $modified
   ): string {
-    $ruleFile = '_rule_' . $slug . '.md';
-    $placeholder = "=== {$title} ===\n\n**RULE:** {$title}: .ai/rules/{$ruleFile}\n";
+    $ruleFile = $this->ruleFileName($slug);
+    $pretext = $this->resolvePretextLabel($strategy, 'section');
+    $placeholder = "=== {$title} ===\n\n{$pretext} {$title}: {$this->rulesFolder()}/{$ruleFile}\n";
 
     if (str_contains($modified, $placeholder)) {
       return $modified;
@@ -317,6 +325,7 @@ class AgentDirectiveOptimizeCommand extends Command
         $body,
         $raw,
         $slug,
+        $strategy,
         $rulesDir,
         $dryRun,
         $filename,
@@ -374,6 +383,7 @@ class AgentDirectiveOptimizeCommand extends Command
         $body,
         $raw,
         $slug,
+        $strategy,
         $rulesDir,
         $dryRun,
         $filename,
@@ -408,8 +418,10 @@ class AgentDirectiveOptimizeCommand extends Command
     array &$extractions,
     string $modified
   ): string {
-    $masterFile = '_rule_' . $slug . '.md';
-    $placeholder = "=== {$title} ===\n\n**RULE:** {$title}: .ai/rules/{$masterFile}\n";
+    $masterFile = $this->ruleFileName($slug);
+    $sectionPretext = $this->resolvePretextLabel('nested_full', 'section');
+    $subSectionPretext = $this->resolvePretextLabel('nested_full', 'sub_section');
+    $placeholder = "=== {$title} ===\n\n{$sectionPretext} {$title}: {$this->rulesFolder()}/{$masterFile}\n";
 
     if (str_contains($modified, $placeholder)) {
       return $modified;
@@ -426,7 +438,8 @@ class AgentDirectiveOptimizeCommand extends Command
     }
 
     if (! isset($writtenSlugs[$slug])) {
-      $subDir = $rulesDir . '/_rule_' . $slug;
+      $rulePrefix = (string) config('agent-optimizer.rule_file_prefix', '_rule_');
+      $subDir = $rulesDir . '/' . $rulePrefix . $slug;
 
       if (! is_dir($subDir)) {
         mkdir($subDir, 0755, true);
@@ -438,7 +451,7 @@ class AgentDirectiveOptimizeCommand extends Command
       // Write qualifying subsections to the subdirectory.
       foreach ($qualifying as $header) {
         $subSlug = $this->slugifyTitle($header['title']);
-        $subFile = $subDir . '/_subsection_' . $subSlug . '.md';
+        $subFile = $subDir . '/' . $this->subsectionFileName($subSlug);
         file_put_contents($subFile, $header['raw']);
         $subsectionSlugs[$header['title']] = $subSlug;
       }
@@ -450,6 +463,7 @@ class AgentDirectiveOptimizeCommand extends Command
         $allHeaders,
         $qualifying,
         $seniorLevel,
+        $subSectionPretext,
         $subsectionSlugs
       );
       file_put_contents($rulesDir . '/' . $masterFile, $masterContent);
@@ -487,12 +501,15 @@ class AgentDirectiveOptimizeCommand extends Command
     string $modified,
     bool $splitMain
   ): string {
+    $rulePrefix = (string) config('agent-optimizer.rule_file_prefix', '_rule_');
+    $folder = $this->rulesFolder();
+
     // Dry-run: record one extraction entry per subsection.
     if ($dryRun) {
       foreach ($qualifying as $header) {
         $subSlug = $this->slugifyTitle($header['title']);
         $compositeSlug = $slug . '--' . $subSlug;
-        $subFile = '_rule_' . $slug . '/_subsection_' . $subSlug . '.md';
+        $subFile = $rulePrefix . $slug . '/' . $this->subsectionFileName($subSlug);
 
         if (! isset($writtenSlugs[$compositeSlug])) {
           $writtenSlugs[$compositeSlug] = true;
@@ -507,7 +524,7 @@ class AgentDirectiveOptimizeCommand extends Command
 
       if ($splitMain) {
         $mainCompositeSlug = $slug . '--main';
-        $mainFile = '_rule_' . $slug . '.md';
+        $mainFile = $this->ruleFileName($slug);
 
         if (! isset($writtenSlugs[$mainCompositeSlug])) {
           $writtenSlugs[$mainCompositeSlug] = true;
@@ -523,7 +540,7 @@ class AgentDirectiveOptimizeCommand extends Command
       return $modified;
     }
 
-    $subDir = $rulesDir . '/_rule_' . $slug;
+    $subDir = $rulesDir . '/' . $rulePrefix . $slug;
 
     if (! is_dir($subDir)) {
       mkdir($subDir, 0755, true);
@@ -531,16 +548,18 @@ class AgentDirectiveOptimizeCommand extends Command
 
     // Extract qualifying subsections and build inline replacements.
     $replacedRaw = $raw;
+    $effectiveStrategy = $splitMain ? 'nested_split' : 'nested_subsections';
+    $subSectionPretext = $this->resolvePretextLabel($effectiveStrategy, 'sub_section');
 
     foreach ($qualifying as $header) {
       $subSlug = $this->slugifyTitle($header['title']);
       $compositeSlug = $slug . '--' . $subSlug;
-      $subFile = '_rule_' . $slug . '/_subsection_' . $subSlug . '.md';
+      $subFile = $rulePrefix . $slug . '/' . $this->subsectionFileName($subSlug);
       $headerPrefix = str_repeat('#', $header['level']);
-      $subPlaceholder = "{$headerPrefix} {$header['title']}\n\n**RULE:** .ai/rules/{$subFile}\n";
+      $subPlaceholder = "{$headerPrefix} {$header['title']}\n\n{$subSectionPretext} {$folder}/{$subFile}\n";
 
       if (! isset($writtenSlugs[$compositeSlug])) {
-        file_put_contents($subDir . '/_subsection_' . $subSlug . '.md', $header['raw']);
+        file_put_contents($subDir . '/' . $this->subsectionFileName($subSlug), $header['raw']);
         $writtenSlugs[$compositeSlug] = true;
         $extractions[$compositeSlug] = [
           'title' => $title . ' > ' . $header['title'],
@@ -558,7 +577,7 @@ class AgentDirectiveOptimizeCommand extends Command
     // nested_split: also extract the main section body to its own rule file.
     if ($splitMain) {
       $mainCompositeSlug = $slug . '--main';
-      $mainFile = '_rule_' . $slug . '.md';
+      $mainFile = $this->ruleFileName($slug);
 
       if (! isset($writtenSlugs[$mainCompositeSlug])) {
         // Write the modified section (subsections replaced by references) to the rule file.
@@ -573,7 +592,8 @@ class AgentDirectiveOptimizeCommand extends Command
       $extractions[$mainCompositeSlug]['appliedTo'][] = $filename;
 
       // Replace the entire original raw block with a single placeholder.
-      $masterPlaceholder = "=== {$title} ===\n\n**RULE:** {$title}: .ai/rules/{$mainFile}\n";
+      $sectionPretext = $this->resolvePretextLabel('nested_split', 'section');
+      $masterPlaceholder = "=== {$title} ===\n\n{$sectionPretext} {$title}: {$folder}/{$mainFile}\n";
 
       return str_replace($raw, $masterPlaceholder . "\n", $modified);
     }
@@ -604,6 +624,7 @@ class AgentDirectiveOptimizeCommand extends Command
     array $allHeaders,
     array $qualifying,
     int $seniorLevel,
+    string $subSectionPretext,
     array $subsectionSlugs
   ): string {
     $qualifyingTitles = array_column($qualifying, 'title');
@@ -629,10 +650,11 @@ class AgentDirectiveOptimizeCommand extends Command
       } elseif ($isQualifying && isset($subsectionSlugs[$header['title']])) {
         $subSlug = $subsectionSlugs[$header['title']];
         $headerPrefix = str_repeat('#', $header['level']);
-        $subRef = ".ai/rules/_rule_{$slug}/_subsection_{$subSlug}.md";
+        $rulePrefix = (string) config('agent-optimizer.rule_file_prefix', '_rule_');
+        $subRef = $this->rulesFolder() . '/' . $rulePrefix . $slug . '/' . $this->subsectionFileName($subSlug);
         $lines[] = "{$headerPrefix} {$header['title']}";
         $lines[] = '';
-        $lines[] = "**RULE:** {$header['title']}: {$subRef}";
+        $lines[] = "{$subSectionPretext} {$header['title']}: {$subRef}";
         $lines[] = '';
       } else {
         // Non-qualifying header: include raw content as-is.
@@ -719,7 +741,14 @@ class AgentDirectiveOptimizeCommand extends Command
 
     if ($strategy === 'auto') {
       $headers = $this->parseMarkdownHeaders($body);
-      $strategy = empty($headers) ? 'full_section' : 'nested_full';
+
+      if (empty($headers)) {
+        $strategy = 'full_section';
+      } else {
+        $nested = (string) config('agent-optimizer.auto_nested_strategy', 'nested_full');
+        $validNested = ['nested_full', 'nested_subsections', 'nested_split'];
+        $strategy = in_array($nested, $validNested, true) ? $nested : 'nested_full';
+      }
     }
 
     return $strategy;
@@ -735,7 +764,10 @@ class AgentDirectiveOptimizeCommand extends Command
    */
   protected function extractBoostBlock(string $content): string
   {
-    if (preg_match('/<laravel-boost-guidelines>(.*?)<\/laravel-boost-guidelines>/s', $content, $matches)) {
+    $tag = (string) config('agent-optimizer.boost_wrapper_tag', 'laravel-boost-guidelines');
+    $quotedTag = preg_quote($tag, '/');
+
+    if (preg_match("/<{$quotedTag}>(.*?)<\\/{$quotedTag}>/s", $content, $matches)) {
       return $matches[1];
     }
 
@@ -783,6 +815,69 @@ class AgentDirectiveOptimizeCommand extends Command
       $this->exceptions,
       config('agent-optimizer.exceptions', [])
     );
+  }
+
+  /**
+   * Resolve the pretext label for a RULE reference line.
+   *
+   * Checks config('agent-optimizer.reference_pretext') in this order:
+   *   1. strategies.{$strategy}.{$type}  (when non-null)
+   *   2. defaults.{$type}
+   *   3. Hard-coded fallback '**RULE:**'
+   *
+   * @param  string  $strategy  e.g. 'full_section', 'nested_subsections'
+   * @param  string  $type      'section' or 'sub_section'
+   */
+  protected function resolvePretextLabel(string $strategy, string $type): string
+  {
+    /** @var array{defaults: array<string,string>, strategies: array<string,mixed>} $cfg */
+    $cfg = config('agent-optimizer.reference_pretext', []);
+    $default = $cfg['defaults'][$type] ?? '**RULE:**';
+
+    $strategyEntry = $cfg['strategies'][$strategy] ?? null;
+
+    if (is_array($strategyEntry)) {
+      return isset($strategyEntry[$type]) && $strategyEntry[$type] !== null
+        ? (string) $strategyEntry[$type]
+        : $default;
+    }
+
+    // null or missing strategy entry → use default
+    return $default;
+  }
+
+  /**
+   * Return the rules folder path (relative to project root) used in
+   * placeholder reference lines. Strips surrounding slashes so it can safely
+   * be concatenated with a leading '/'.
+   */
+  protected function rulesFolder(): string
+  {
+    return trim((string) config('agent-optimizer.base_path', '.ai/rules'), '/\\');
+  }
+
+  /**
+   * Build the filename for a top-level rule file using the configured prefix
+   * and extension, e.g. _rule_my-section.md.
+   */
+  protected function ruleFileName(string $slug): string
+  {
+    $prefix = (string) config('agent-optimizer.rule_file_prefix', '_rule_');
+    $ext = ltrim((string) config('agent-optimizer.rule_file_extension', 'md'), '.');
+
+    return $prefix . $slug . '.' . $ext;
+  }
+
+  /**
+   * Build the filename for a subsection file using the configured prefix and
+   * extension, e.g. _subsection_my-header.md.
+   */
+  protected function subsectionFileName(string $slug): string
+  {
+    $prefix = (string) config('agent-optimizer.subsection_file_prefix', '_subsection_');
+    $ext = ltrim((string) config('agent-optimizer.rule_file_extension', 'md'), '.');
+
+    return $prefix . $slug . '.' . $ext;
   }
 
   /**

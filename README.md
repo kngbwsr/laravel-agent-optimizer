@@ -1,6 +1,6 @@
 # Laravel Agent Optimizer
 
-A Laravel package that optimizes AI agent directive files by extracting large guideline sections into modular `.ai/rules/` files, keeping your top-level agent directives lean and focused.
+A Laravel package that optimizes AI agent directive files by extracting large guideline sections into modular rule files, keeping your top-level agent directives lean and focused.
 
 Works seamlessly with [Laravel Boost](https://github.com/laravel-boost/boost)-generated agent directive files and automatically re-runs after `boost:update` or `boost:install`.
 
@@ -12,9 +12,11 @@ Works seamlessly with [Laravel Boost](https://github.com/laravel-boost/boost)-ge
 - **Five extraction strategies** — `full_section`, `nested_full`, `nested_subsections`, `nested_split`, and `auto` to suit any section structure
 - **Per-section strategy overrides** — apply a different strategy to individual sections without changing the global default
 - **Configurable line threshold** — only extract sections that exceed a minimum line count, filtering out trivial sections
+- **Configurable file naming** — control the prefix and extension for generated rule and subsection files (e.g. `.mdc` for Cursor IDE)
+- **Configurable reference pretext** — customise the bold label inserted before every file-path reference, globally or per-strategy
 - **Exception list** — protect specific sections from ever being extracted
 - **Dry-run mode** — preview what would be extracted without writing any files
-- **Laravel Boost integration** — automatically re-optimizes after `boost:update` or `boost:install` (toggle via `auto_run_after_boost`)
+- **Laravel Boost integration** — automatically re-optimizes after configured trigger commands (default: `boost:update`, `boost:install`)
 - **Composer script management** — `agent:install` adds/removes the `post-update-cmd` entry; or set `manage_composer_scripts => true` to automate it
 - **Laravel auto-discovery** — zero manual registration required for Laravel 10+
 
@@ -59,7 +61,7 @@ To remove the entry later:
 php artisan agent:install --remove
 ```
 
-Alternatively, set `manage_composer_scripts => true` in `config/agent-optimizer.php` and the service provider will call `agent:install` automatically on every console bootstrap (writing `composer.json` only when the entry is missing).
+Alternatively, set `manage_composer_scripts => true` in `config/agent-optimizer.php` and the service provider will manage the entry automatically on every console bootstrap.
 
 ---
 
@@ -67,92 +69,137 @@ Alternatively, set `manage_composer_scripts => true` in `config/agent-optimizer.
 
 After publishing, `config/agent-optimizer.php` exposes the following options:
 
+### Paths & file discovery
+
 ```php
-return [
+// Directory (relative to base_path()) where extracted rule files are written.
+'base_path' => '.ai/rules',
 
-    /*
-     | The directory (relative to base_path()) where extracted rule files
-     | will be written. Created automatically if it does not exist.
-     */
-    'base_path' => '.ai/rules',
+// Directories scanned for *.md agent directive files (relative to base_path()).
+// Files must contain at least one === title === section boundary.
+'source_directories' => ['/'],
+```
 
-    /*
-     | Directories (relative to base_path()) scanned for *.md agent directive
-     | files. Files must contain at least one === title === section boundary.
-     | Use '/' to scan the project root.
-     */
-    'source_directories' => [
-        '/',
+### Generated file naming
+
+```php
+// Prefix for top-level rule file names. Default produces _rule_my-section.md.
+// Also used as the subdirectory prefix for nested strategies (_rule_my-section/).
+'rule_file_prefix' => '_rule_',
+
+// Prefix for subsection file names inside a rule subdirectory.
+// Default produces _subsection_my-header.md.
+'subsection_file_prefix' => '_subsection_',
+
+// Extension for all generated rule files (without leading dot).
+// Use 'mdc' for Cursor IDE, 'txt' if your tooling requires it.
+'rule_file_extension' => 'md',
+```
+
+### Extraction behaviour
+
+```php
+// Section titles that are NEVER extracted (case-sensitive, exact match).
+'exceptions' => [
+    '.ai/_app-directive rules',
+    'foundation rules',
+],
+
+// Minimum body line count a section must exceed to be eligible for extraction.
+// The --min-lines CLI flag overrides this at runtime.
+'line_threshold' => 5,
+
+// Global extraction strategy. Available values:
+//   full_section       — entire section body → single flat rule file
+//   nested_full        — full section + sub-headers → master file + per-subsection files
+//   nested_subsections — subsections extracted individually; main header stays in-place
+//   nested_split       — like nested_subsections but also extracts the main body
+//   auto               — full_section when no sub-headers, auto_nested_strategy otherwise
+'extraction_strategy' => 'nested_subsections',
+
+// When strategy is 'auto' and sub-headers are detected, this concrete nested
+// strategy is applied. Valid: 'nested_full', 'nested_subsections', 'nested_split'.
+'auto_nested_strategy' => 'nested_full',
+
+// Minimum line count for a sub-header to be extracted in a nested strategy.
+'subsection_line_threshold' => 3,
+
+// Per-section strategy overrides. Key = raw section title, value = strategy string.
+'section_overrides' => [
+    // 'filament/filament rules' => 'nested_full',
+    // 'laravel/core rules'      => 'full_section',
+],
+```
+
+### Reference pretext labels
+
+Controls the bold label inserted before every rule file path in placeholder lines.
+
+```php
+'reference_pretext' => [
+
+    // Fallback labels used when no strategy-specific override is set.
+    // 'section'     — top-level === title === replacement lines.
+    // 'sub_section' — inline Markdown sub-header replacement lines.
+    'defaults' => [
+        'section'     => '**RULE:**',
+        'sub_section' => '**RULE:**',
     ],
 
-    /*
-     | Section titles that are NEVER extracted, regardless of line count or
-     | strategy. Values must match the raw title between the === markers
-     | exactly (case-sensitive, no leading/trailing whitespace).
-     */
-    'exceptions' => [
-        '.ai/_app-directive rules',
-        'foundation rules',
-        'boost rules',
+    // Per-strategy overrides. Set a key to null to inherit from defaults.
+    // Supply an array to override 'section' and/or 'sub_section' individually
+    // (a null value for an individual key still falls back to the default).
+    'strategies' => [
+        'full_section'       => null,
+        'nested_full'        => null,
+        'nested_subsections' => null,
+        'nested_split'       => null,
+        'auto'               => null,
     ],
+],
+```
 
-    /*
-     | Minimum body line count a section must exceed before it is eligible
-     | for extraction. The --min-lines CLI option overrides this at runtime.
-     */
-    'line_threshold' => 5,
+Example — different labels per strategy:
 
-    /*
-     | Global extraction strategy. Available values:
-     |
-     |   full_section       — entire section body → single flat rule file
-     |   nested_full        — full section including all sub-headers → master
-     |                        file + per-subsection files in a subdirectory
-     |   nested_subsections — subsections extracted individually; main header
-     |                        and its direct body stay in-place
-     |   nested_split       — like nested_subsections but also extracts the
-     |                        main body to its own rule file
-     |   auto               — full_section when no sub-headers detected,
-     |                        nested_full when sub-headers are detected
-     */
-    'extraction_strategy' => 'nested_subsections',
+```php
+'reference_pretext' => [
+    'defaults' => [
+        'section'     => '**Rules Directory:**',
+        'sub_section' => '**RULE:**',
+    ],
+    'strategies' => [
+        'nested_subsections' => [
+            'sub_section' => '**Directive:**',
+        ],
+        'nested_split' => [
+            'section'     => '**Rules Directory:**',
+            'sub_section' => '**Directive:**',
+        ],
+    ],
+],
+```
 
-    /*
-     | Minimum line count for a detected sub-header to be extracted when
-     | using a nested strategy. Sub-sections below this threshold are kept
-     | inline. Must be >= 1.
-     */
-    'subsection_line_threshold' => 3,
+### Laravel Boost integration
 
-    /*
-     | Per-section strategy overrides. Key = raw section title, value = one
-     | of the five strategy strings above.
-     |
-     | Example:
-     |   'section_overrides' => [
-     |       'filament/filament rules' => 'nested_full',
-     |       'laravel/core rules'      => 'full_section',
-     |   ],
-     */
-    'section_overrides' => [],
+```php
+// When true, agent:optimize runs automatically after any command listed in
+// boost_trigger_commands via a CommandFinished event listener.
+'auto_run_after_boost' => true,
 
-    /*
-     | When true, automatically runs `agent:optimize` after `boost:update` or
-     | `boost:install` completes via a CommandFinished event listener.
-     | Set to false to disable the listener and run the command manually.
-     */
-    'auto_run_after_boost' => true,
+// Artisan commands that trigger the automatic agent:optimize re-run.
+// Add custom wrappers around standard Boost commands here if needed.
+'boost_trigger_commands' => [
+    'boost:update',
+    'boost:install',
+],
 
-    /*
-     | When true, the service provider calls `agent:install` on every console
-     | bootstrap to ensure the `@php artisan agent:optimize --ansi` line is
-     | present in composer.json post-update-cmd. composer.json is only written
-     | when a change is needed. Set to false (default) to manage this manually
-     | via `php artisan agent:install` / `agent:install --remove`.
-     */
-    'manage_composer_scripts' => false,
+// XML-like tag name that Laravel Boost wraps its generated content block with.
+// Change only if you use a custom Boost fork with a different tag name.
+'boost_wrapper_tag' => 'laravel-boost-guidelines',
 
-];
+// When true, the service provider ensures @php artisan agent:optimize --ansi
+// is present in composer.json post-update-cmd on every console bootstrap.
+'manage_composer_scripts' => false,
 ```
 
 ---
@@ -165,7 +212,7 @@ return [
 php artisan agent:optimize
 ```
 
-Scans all configured `source_directories` for agent directive Markdown files, extracts qualifying sections to `.ai/rules/`, and replaces each extracted block with a `**RULE:** path/to/file.md` placeholder.
+Scans all configured `source_directories` for agent directive Markdown files, extracts qualifying sections to `base_path`, and replaces each extracted block with a configurable reference placeholder.
 
 ### Preview without writing files
 
@@ -204,12 +251,23 @@ php artisan agent:optimize --min-lines=8 --dry-run
 1. The command scans each configured directory for `*.md` files that contain at least one `=== title ===` section boundary.
 2. Each section is parsed and checked against the configured `exceptions` list and `line_threshold`.
 3. The configured extraction strategy (global or per-section override) determines how the section is extracted:
-   - A rule file is written to `base_path` (e.g. `.ai/rules/_rule_my-section.md`).
-   - The original section body is replaced with a one-line `**RULE:** …` pointer.
+   - A rule file is written to `base_path` using the configured `rule_file_prefix` and `rule_file_extension`.
+   - The original section body is replaced with a reference placeholder using the configured pretext label and the `base_path`-relative path.
 4. If the source file was modified it is written back to disk.
+
+### Extraction strategies
+
+| Strategy | Behaviour |
+|---|---|
+| `full_section` | Entire section body → single flat rule file. One placeholder replaces the whole block. |
+| `nested_full` | Full section extracted to a master file; each qualifying sub-header gets its own file in a `rule_file_prefix + slug/` subdirectory. One placeholder at the extraction site. |
+| `nested_subsections` | Qualifying sub-headers extracted individually into a subdirectory. The main header and its direct body stay in the source file; each sub-header is replaced with an inline reference. |
+| `nested_split` | Like `nested_subsections` but the main section body is also extracted to its own root-level rule file. Only the header title and sub-header references remain in-place. |
+| `auto` | No sub-headers detected → `full_section`. Sub-headers detected → strategy from `auto_nested_strategy` (default `nested_full`). |
 
 ---
 
 ## License
 
 MIT
+

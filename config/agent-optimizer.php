@@ -20,6 +20,47 @@ return [
 
   /*
       |--------------------------------------------------------------------------
+      | Rule File Prefix
+      |--------------------------------------------------------------------------
+      |
+      | The prefix prepended to every top-level rule file slug when generating
+      | file names. For example, the default '_rule_' produces file names like
+      | _rule_my-section.md.
+      |
+      | Also used as the subdirectory prefix when nested strategies create a
+      | per-section folder (e.g. _rule_my-section/).
+      |
+      */
+  'rule_file_prefix' => '_rule_',
+
+  /*
+      |--------------------------------------------------------------------------
+      | Subsection File Prefix
+      |--------------------------------------------------------------------------
+      |
+      | The prefix prepended to subsection file slugs when generating file
+      | names inside a rule subdirectory. The default '_subsection_' produces
+      | names like _subsection_my-header.md.
+      |
+      */
+  'subsection_file_prefix' => '_subsection_',
+
+  /*
+      |--------------------------------------------------------------------------
+      | Rule File Extension
+      |--------------------------------------------------------------------------
+      |
+      | The file extension (without the leading dot) used for every generated
+      | rule file. The default 'md' works for standard Markdown tooling.
+      |
+      | Set to 'mdc' for Cursor IDE rule files, or 'txt' if your AI tooling
+      | does not require a Markdown extension.
+      |
+      */
+  'rule_file_extension' => 'md',
+
+  /*
+      |--------------------------------------------------------------------------
       | Source Directories
       |--------------------------------------------------------------------------
       |
@@ -130,6 +171,21 @@ return [
 
   /*
       |--------------------------------------------------------------------------
+      | Auto Nested Strategy
+      |--------------------------------------------------------------------------
+      |
+      | When the global (or per-section override) strategy is 'auto' and the
+      | section body contains Markdown headers, the command must pick a concrete
+      | nested strategy to apply. This setting controls that choice.
+      |
+      | Valid values: 'nested_full', 'nested_subsections', 'nested_split'.
+      | Falls back to 'nested_full' for any unrecognised value.
+      |
+      */
+  'auto_nested_strategy' => 'nested_full',
+
+  /*
+      |--------------------------------------------------------------------------
       | Subsection Line Threshold
       |--------------------------------------------------------------------------
       |
@@ -186,6 +242,40 @@ return [
 
   /*
       |--------------------------------------------------------------------------
+      | Boost Trigger Commands
+      |--------------------------------------------------------------------------
+      |
+      | The Artisan command names that trigger an automatic `agent:optimize`
+      | run when `auto_run_after_boost` is true. Add any additional Boost-like
+      | commands here if your workflow uses custom wrappers around the standard
+      | Boost commands.
+      |
+      */
+  'boost_trigger_commands' => [
+    'boost:update',
+    'boost:install',
+  ],
+
+  /*
+      |--------------------------------------------------------------------------
+      | Boost Wrapper Tag
+      |--------------------------------------------------------------------------
+      |
+      | The XML-like tag name that Laravel Boost wraps its generated guidelines
+      | block with. The optimizer uses this to locate and update only the Boost-
+      | managed portion of an agent directive file, leaving any content outside
+      | the block untouched.
+      |
+      | Change this only if you use a custom Boost fork or a different tool that
+      | wraps guidelines with a different tag name.
+      |
+      | Default: 'laravel-boost-guidelines'
+      |
+      */
+  'boost_wrapper_tag' => 'laravel-boost-guidelines',
+
+  /*
+      |--------------------------------------------------------------------------
       | Manage Composer Scripts
       |--------------------------------------------------------------------------
       |
@@ -206,5 +296,55 @@ return [
       |
       */
   'manage_composer_scripts' => false,
+
+  /*
+      |--------------------------------------------------------------------------
+      | Reference Pretext Labels
+      |--------------------------------------------------------------------------
+      |
+      | Controls the bold label text inserted before the file-path in every
+      | reference line written into agent directive files during extraction.
+      |
+      | Two reference types are distinguished:
+      |
+      |   'section'     — the single-line placeholder that replaces an entire
+      |                   === title === block (top-level section reference).
+      |   'sub_section' — the inline reference that replaces a Markdown sub-
+      |                   header (## / ### etc.) block within a section.
+      |
+      | 'defaults' defines the fallback label for each type. These are used
+      | whenever a strategy entry is null or does not specify that type.
+      |
+      | 'strategies' allows per-strategy overrides. Set a strategy key to null
+      | to inherit both defaults. Supply an array with 'section' and/or
+      | 'sub_section' keys to override individually (a null value for an
+      | individual key still falls back to the corresponding default).
+      |
+      | Example:
+      |   'strategies' => [
+      |       'nested_subsections' => [
+      |           'section'     => null,                   // use defaults.section
+      |           'sub_section' => '**Directive:**',
+      |       ],
+      |       'nested_split' => [
+      |           'section'     => '**Rules Directory:**',
+      |           'sub_section' => '**Directive:**',
+      |       ],
+      |   ],
+      |
+      */
+  'reference_pretext' => [
+    'defaults' => [
+      'section'     => '**RULE:**',
+      'sub_section' => '**RULE:**',
+    ],
+    'strategies' => [
+      'full_section'       => null,
+      'nested_full'        => null,
+      'nested_subsections' => null,
+      'nested_split'       => null,
+      'auto'               => null,
+    ],
+  ],
 
 ];

@@ -77,7 +77,7 @@ class AgentOptimizerServiceProvider extends ServiceProvider
           return;
         }
 
-        if (! in_array($event->command, ['boost:update', 'boost:install'], true)) {
+        if (! in_array($event->command, config('agent-optimizer.boost_trigger_commands', ['boost:update', 'boost:install']), true)) {
           return;
         }
 
