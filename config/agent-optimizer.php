@@ -16,7 +16,7 @@ return [
       | Example: '.ai/rules' → extracted files live at <project>/.ai/rules/
       |
       */
-  'base_path' => '.ai/rules',
+  'base_path' => '.ai/rules/agent-optimizer/',
 
   /*
       |--------------------------------------------------------------------------

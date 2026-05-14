@@ -57,6 +57,14 @@ class AgentDirectiveOptimizeCommand extends Command
       mkdir($rulesDir, 0755, true);
     }
 
+    $pruned = $this->pruneRulesDirectory($rulesDir, $dryRun);
+
+    if ($pruned > 0) {
+      $verb = $dryRun ? 'Would remove' : 'Removed';
+      $this->line("<comment>Preflight:</comment> {$verb} {$pruned} previously generated file(s) from {$rulesFolder}.");
+      $this->newLine();
+    }
+
     $files = $this->resolveAgentDirectiveFiles($root);
 
     if (empty($files)) {
@@ -102,6 +110,70 @@ class AgentDirectiveOptimizeCommand extends Command
     }
 
     return self::SUCCESS;
+  }
+
+      // -------------------------------------------------------------------------
+      // Preflight housekeeping
+      // -------------------------------------------------------------------------
+
+  /**
+   * Delete any previously generated rule and subsection files from the rules
+   * directory, then remove any empty subdirectories that remain.
+   *
+   * Only files whose names begin with the configured rule_file_prefix or
+   * subsection_file_prefix are removed, so any hand-authored files sitting
+   * alongside them are left untouched.
+   *
+   * Returns the count of files deleted (or that would be deleted in dry-run).
+   */
+  protected function pruneRulesDirectory(string $rulesDir, bool $dryRun): int
+  {
+    if (! is_dir($rulesDir)) {
+      return 0;
+    }
+
+    $rulePrefix       = (string) config('agent-optimizer.rule_file_prefix', '_rule_');
+    $subsectionPrefix = (string) config('agent-optimizer.subsection_file_prefix', '_subsection_');
+    $deleted          = 0;
+
+    $iterator = new \RecursiveIteratorIterator(
+      new \RecursiveDirectoryIterator($rulesDir, \FilesystemIterator::SKIP_DOTS),
+      \RecursiveIteratorIterator::LEAVES_ONLY
+    );
+
+    foreach ($iterator as $item) {
+      /** @var \SplFileInfo $item */
+      if (! $item->isFile()) {
+        continue;
+      }
+
+      $basename = $item->getBasename();
+
+      if (! str_starts_with($basename, $rulePrefix) && ! str_starts_with($basename, $subsectionPrefix)) {
+        continue;
+      }
+
+      if ($dryRun) {
+        $this->line('  <comment>[dry-run] Would delete:</comment> ' . $item->getPathname());
+      } else {
+        unlink($item->getPathname());
+      }
+
+      $deleted++;
+    }
+
+    // After deleting files, remove any subdirectories that are now empty.
+    if (! $dryRun) {
+      foreach (glob($rulesDir . '/*', GLOB_ONLYDIR) ?: [] as $subDir) {
+        $remaining = array_diff((array) scandir($subDir), ['.', '..']);
+
+        if (empty($remaining)) {
+          rmdir($subDir);
+        }
+      }
+    }
+
+    return $deleted;
   }
 
       // -------------------------------------------------------------------------
