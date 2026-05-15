@@ -26,14 +26,14 @@ class AgentDirectiveOptimizeCommand extends Command
      * already optimized and must not be re-extracted. Also visible to LLMs so
      * they know the section content lives in separate directive files.
      */
-    protected const OPTIMIZED_MARKER = '<!-- agent-optimized -->';
+    protected const OPTIMIZED_MARKER = '*agent-optimized*';
 
     /**
      * Default note prepended once to each source agent directive file (e.g. AGENTS.md,
      * CLAUDE.md) the first time any section in the file is extracted. Overridable via
      * config('agent-optimizer.agent_file_header').
      */
-    protected const DEFAULT_AGENT_FILE_HEADER = "> **IMPORTANT:** Sections in this file (marked with <!-- agent-optimized -->), have been optimized for token and context use. Their content has been extracted to separate rule and directive files that are to be **loaded on demand** — only when the user's request is relevant to that section.\n\n---\n\n";
+    protected const DEFAULT_AGENT_FILE_HEADER = "> **IMPORTANT:** Sections in this file (marked with *agent-optimized*), have been optimized for token and context use. Their content has been extracted to separate rule and directive files that are to be **loaded on demand** — only when the user's request is relevant to that section.\n\n---\n\n";
 
     /**
      * Default note prepended to every generated top-level rule file (_rule_*.md).
