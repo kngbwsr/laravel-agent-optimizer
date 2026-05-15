@@ -336,4 +336,45 @@ return [
         ],
     ],
 
+    /*
+      |--------------------------------------------------------------------------
+      | Agent File Header
+      |--------------------------------------------------------------------------
+      |
+      | A Markdown note prepended once to each source agent directive file
+      | (e.g. AGENTS.md, CLAUDE.md) the first time any of its sections are
+      | extracted. It informs the LLM that the file contains token-optimized
+      | sections whose content lives in separate directive files loaded on demand.
+      |
+      | Set to null to use the built-in default (a Markdown blockquote).
+      | Set to any raw Markdown string to override it entirely.
+      |
+      | Note: if you change this value after files have already been optimized,
+      | run `php artisan optimizeAgents:reset` first so the old header is removed
+      | before the new one is written.
+      |
+      | Example:
+      |   'agent_file_header' => "> [agent-optimizer] This file has optimized sections.\n\n---\n\n",
+      |
+      */
+    'agent_file_header' => null,
+
+    /*
+      |--------------------------------------------------------------------------
+      | Rule File Header
+      |--------------------------------------------------------------------------
+      |
+      | A Markdown note prepended to every generated top-level rule file
+      | (_rule_*.md). Subsection files (_subsection_*.md) do not receive this
+      | header — they are leaf nodes in the directive chain.
+      |
+      | Set to null to use the built-in default (a Markdown blockquote).
+      | Set to any raw Markdown string to override it entirely.
+      |
+      | Example:
+      |   'rule_file_header' => "> [agent-optimized] Auto-generated. Load referenced files on demand.\n\n---\n\n",
+      |
+      */
+    'rule_file_header' => null,
+
 ];

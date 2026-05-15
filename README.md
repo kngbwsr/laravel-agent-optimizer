@@ -15,6 +15,8 @@ Works seamlessly with [Laravel Boost](https://github.com/laravel-boost/boost)-ge
 - **Configurable line threshold** — only extract sections that exceed a minimum line count, filtering out trivial sections
 - **Configurable file naming** — control the prefix and extension for generated rule and subsection files (e.g. `.mdc` for Cursor IDE)
 - **Configurable reference pretext** — customise the label inserted before every file-path reference, globally or per-strategy; supports a `<title>` token that is replaced at runtime with the actual section or sub-section title
+- **Idempotent optimization** — an `<!-- agent-optimized -->` marker is written into each extracted section so standalone re-runs skip already-optimized sections without double-extracting, and the preflight step preserves rule files that are still referenced
+- **Configurable header notes** — automatically prepends an LLM-readable blockquote to agent directive files and to generated rule files; content is fully customisable via config
 - **Exception list** — protect specific sections from ever being extracted
 - **Dry-run mode** — preview what would be extracted without writing any files
 - **Laravel Boost integration** — automatically re-optimizes after configured trigger commands (default: `boost:update`, `boost:install`)
@@ -77,7 +79,7 @@ All generated files are written to a dedicated `agent-optimized/` folder inside 
         └── _subsection_part-two.md
 ```
 
-The preflight step at the start of each `optimizeAgents:optimize` run **deletes and recreates the entire `agent-optimized/` folder**. This guarantees no stale files are left behind when config settings change between runs.
+On each `optimizeAgents:optimize` run a **smart preflight** step runs before any extraction. If the agent files contain sections already marked as optimized the corresponding rule files are preserved; only orphaned or stale files are removed. When agent files are regenerated fresh (e.g. after `boost:update`) no markers are present and the entire `agent-optimized/` folder is wiped and recreated.
 
 ---
 
@@ -206,6 +208,29 @@ Example — embedding the title and using custom labels per strategy:
 ],
 ```
 
+### Header notes
+
+Controls the Markdown note prepended to agent directive files and generated rule files when sections are first extracted.
+
+```php
+// Prepended once to each source agent directive file (e.g. AGENTS.md, CLAUDE.md) the
+// first time any of its sections are extracted. Tells the LLM that some section content
+// has been moved to separate directive files and should be loaded on demand.
+//
+// null  = use the built-in default (a Markdown blockquote).
+// string = raw Markdown; formatting is entirely your own.
+'agent_file_header' => null,
+
+// Prepended to every generated top-level rule file (_rule_*.md). Not added to
+// subsection files (_subsection_*.md) — those are leaf nodes in the directive chain.
+//
+// null  = use the built-in default (a Markdown blockquote).
+// string = raw Markdown; formatting is entirely your own.
+'rule_file_header' => null,
+```
+
+> **Note:** if you change either of these values after files have already been optimized, run `php artisan optimizeAgents:reset` first so the old header is removed before the new one is written.
+
 ### Laravel Boost integration
 
 ```php
@@ -291,13 +316,15 @@ Use reset when:
 
 ## How it works
 
-1. **Preflight:** the entire `{base_path}/agent-optimized/` folder is deleted and will be recreated fresh — no stale files from previous config states are ever left behind.
+1. **Preflight:** the command scans agent files for `<!-- agent-optimized -->` markers. Rule files for already-extracted sections are preserved; orphaned files are deleted. When no markers exist (e.g. after a fresh `boost:update`) the entire `agent-optimized/` folder is wiped and recreated.
 2. The command scans each configured directory for `*.md` files that contain at least one `=== title ===` section boundary.
-3. Each section is parsed and checked against the configured `exceptions` list and `line_threshold`.
+3. Each section is parsed and checked against the configured `exceptions` list and `line_threshold`. Sections that already carry the `<!-- agent-optimized -->` marker are skipped.
 4. The configured extraction strategy (global or per-section override) determines how the section is extracted:
    - A rule file is written to `{base_path}/agent-optimized/` using the configured `rule_file_prefix` and `rule_file_extension`.
    - The original section body is replaced with a reference placeholder using the configured pretext label and the file path.
-5. If the source file was modified it is written back to disk.
+   - The `agent_file_header` note is prepended to the source agent directive file (once, on first extraction).
+   - The `rule_file_header` note is prepended to each top-level `_rule_*.md` file (not to `_subsection_*.md` files).
+5. If the source file was modified (or needs a header added) it is written back to disk.
 
 ### Extraction strategies
 
