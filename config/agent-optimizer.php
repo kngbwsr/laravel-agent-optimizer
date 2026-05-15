@@ -75,9 +75,7 @@ return [
       | subdirectories, e.g. ['/', 'docs', '.ai/guidelines'].
       |
       */
-  'source_directories' => [
-    '/',
-  ],
+  'source_directories' => ['/',],
 
   /*
       |--------------------------------------------------------------------------
@@ -102,7 +100,12 @@ return [
       |   ],
       |
       */
-  'exceptions' => [],
+  'exceptions' => [
+        'foundation rules',
+        'boost rules',
+        'php rules',
+        'laravel/core rules',
+  ],
 
   /*
       |--------------------------------------------------------------------------
@@ -274,7 +277,7 @@ return [
       | Reference Pretext Labels
       |--------------------------------------------------------------------------
       |
-      | Controls the bold label text inserted before the file-path in every
+      | Controls the label text inserted before the file-path in every
       | reference line written into agent directive files during extraction.
       |
       | Two reference types are distinguished:
@@ -283,6 +286,11 @@ return [
       |                   === title === block (top-level section reference).
       |   'sub_section' — the inline reference that replaces a Markdown sub-
       |                   header (## / ### etc.) block within a section.
+      |
+      | The special token <title> may be used anywhere in a label string and
+      | will be replaced at runtime with the actual section or sub-section
+      | title. For example, '**RULES for <title>:**' becomes
+      | '**RULES for My Section:**' in the output file.
       |
       | 'defaults' defines the fallback label for each type. These are used
       | whenever a strategy entry is null or does not specify that type.
@@ -299,24 +307,33 @@ return [
       |           'sub_section' => '**Directive:**',
       |       ],
       |       'nested_split' => [
-      |           'section'     => '**Rules Directory:**',
+      |           'section'     => '**Rules Directory for <title>:**',
       |           'sub_section' => '**Directive:**',
       |       ],
       |   ],
       |
       */
-  'reference_pretext' => [
-    'defaults' => [
-      'section'     => '**RULE:**',
-      'sub_section' => '**RULE:**',
+    'reference_pretext' => [
+        'defaults' => [
+            'section'     => '**RULES for <title>:**',
+            'sub_section' => '**RULES:**',
+        ],
+        'strategies' => [
+            'full_section'       => null,
+            'nested_full'        => [
+                'section'     => null,                   // use defaults.section
+                'sub_section' => '**LOAD DIRECTIVE:**',
+            ],
+            'nested_subsections' => [
+                'section'     => null,                   // use defaults.section
+                'sub_section' => '**LOAD DIRECTIVE:**',
+            ],
+            'nested_split' => [
+                'section'     => '**Rules Directory:**',
+                'sub_section' => '**LOAD DIRECTIVE:**',
+            ],
+            'auto'               => null,
+        ],
     ],
-    'strategies' => [
-      'full_section'       => null,
-      'nested_full'        => null,
-      'nested_subsections' => null,
-      'nested_split'       => null,
-      'auto'               => null,
-    ],
-  ],
 
 ];

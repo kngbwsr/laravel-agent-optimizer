@@ -305,8 +305,8 @@ class AgentDirectiveOptimizeCommand extends Command
     string $modified
   ): string {
     $ruleFile = $this->ruleFileName($slug);
-    $pretext = $this->resolvePretextLabel($strategy, 'section');
-    $placeholder = "=== {$title} ===\n\n{$pretext} {$title}: {$this->rulesFolder()}/{$ruleFile}\n";
+    $pretext = $this->resolvePretextLabel($strategy, 'section', $title);
+    $placeholder = "=== {$title} ===\n\n{$pretext} {$this->rulesFolder()}/{$ruleFile}\n";
 
     if (str_contains($modified, $placeholder)) {
       return $modified;
@@ -466,9 +466,9 @@ class AgentDirectiveOptimizeCommand extends Command
     string $modified
   ): string {
     $masterFile = $this->ruleFileName($slug);
-    $sectionPretext = $this->resolvePretextLabel('nested_full', 'section');
+    $sectionPretext = $this->resolvePretextLabel('nested_full', 'section', $title);
     $subSectionPretext = $this->resolvePretextLabel('nested_full', 'sub_section');
-    $placeholder = "=== {$title} ===\n\n{$sectionPretext} {$title}: {$this->rulesFolder()}/{$masterFile}\n";
+    $placeholder = "=== {$title} ===\n\n{$sectionPretext} {$this->rulesFolder()}/{$masterFile}\n";
 
     if (str_contains($modified, $placeholder)) {
       return $modified;
@@ -603,7 +603,8 @@ class AgentDirectiveOptimizeCommand extends Command
       $compositeSlug = $slug . '--' . $subSlug;
       $subFile = $rulePrefix . $slug . '/' . $this->subsectionFileName($subSlug);
       $headerPrefix = str_repeat('#', $header['level']);
-      $subPlaceholder = "{$headerPrefix} {$header['title']}\n\n{$subSectionPretext} {$folder}/{$subFile}\n";
+      $resolvedSubPretext = str_replace('<title>', $header['title'], $subSectionPretext);
+      $subPlaceholder = "{$headerPrefix} {$header['title']}\n\n{$resolvedSubPretext} {$folder}/{$subFile}\n";
 
       if (! isset($writtenSlugs[$compositeSlug])) {
         file_put_contents($subDir . '/' . $this->subsectionFileName($subSlug), $header['raw']);
@@ -639,8 +640,8 @@ class AgentDirectiveOptimizeCommand extends Command
       $extractions[$mainCompositeSlug]['appliedTo'][] = $filename;
 
       // Replace the entire original raw block with a single placeholder.
-      $sectionPretext = $this->resolvePretextLabel('nested_split', 'section');
-      $masterPlaceholder = "=== {$title} ===\n\n{$sectionPretext} {$title}: {$folder}/{$mainFile}\n";
+      $sectionPretext = $this->resolvePretextLabel('nested_split', 'section', $title);
+      $masterPlaceholder = "=== {$title} ===\n\n{$sectionPretext} {$folder}/{$mainFile}\n";
 
       return str_replace($raw, $masterPlaceholder . "\n", $modified);
     }
@@ -701,7 +702,8 @@ class AgentDirectiveOptimizeCommand extends Command
         $subRef = $this->rulesFolder() . '/' . $rulePrefix . $slug . '/' . $this->subsectionFileName($subSlug);
         $lines[] = "{$headerPrefix} {$header['title']}";
         $lines[] = '';
-        $lines[] = "{$subSectionPretext} {$header['title']}: {$subRef}";
+        $resolvedPretext = str_replace('<title>', $header['title'], $subSectionPretext);
+        $lines[] = "{$resolvedPretext} {$subRef}";
         $lines[] = '';
       } else {
         // Non-qualifying header: include raw content as-is.
@@ -875,7 +877,7 @@ class AgentDirectiveOptimizeCommand extends Command
    * @param  string  $strategy  e.g. 'full_section', 'nested_subsections'
    * @param  string  $type      'section' or 'sub_section'
    */
-  protected function resolvePretextLabel(string $strategy, string $type): string
+  protected function resolvePretextLabel(string $strategy, string $type, string $title = ''): string
   {
     /** @var array{defaults: array<string,string>, strategies: array<string,mixed>} $cfg */
     $cfg = config('agent-optimizer.reference_pretext', []);
@@ -884,13 +886,15 @@ class AgentDirectiveOptimizeCommand extends Command
     $strategyEntry = $cfg['strategies'][$strategy] ?? null;
 
     if (is_array($strategyEntry)) {
-      return isset($strategyEntry[$type]) && $strategyEntry[$type] !== null
+      $label = isset($strategyEntry[$type]) && $strategyEntry[$type] !== null
         ? (string) $strategyEntry[$type]
         : $default;
+    } else {
+      // null or missing strategy entry → use default
+      $label = $default;
     }
 
-    // null or missing strategy entry → use default
-    return $default;
+    return $title !== '' ? str_replace('<title>', $title, $label) : $label;
   }
 
   /**

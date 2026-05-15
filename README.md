@@ -14,7 +14,7 @@ Works seamlessly with [Laravel Boost](https://github.com/laravel-boost/boost)-ge
 - **Per-section strategy overrides** — apply a different strategy to individual sections without changing the global default
 - **Configurable line threshold** — only extract sections that exceed a minimum line count, filtering out trivial sections
 - **Configurable file naming** — control the prefix and extension for generated rule and subsection files (e.g. `.mdc` for Cursor IDE)
-- **Configurable reference pretext** — customise the bold label inserted before every file-path reference, globally or per-strategy
+- **Configurable reference pretext** — customise the label inserted before every file-path reference, globally or per-strategy; supports a `<title>` token that is replaced at runtime with the actual section or sub-section title
 - **Exception list** — protect specific sections from ever being extracted
 - **Dry-run mode** — preview what would be extracted without writing any files
 - **Laravel Boost integration** — automatically re-optimizes after configured trigger commands (default: `boost:update`, `boost:install`)
@@ -148,7 +148,9 @@ After running `optimizeAgents:install` (or `php artisan vendor:publish --tag=age
 
 ### Reference pretext labels
 
-Controls the bold label inserted before every rule file path in placeholder lines.
+Controls the label inserted before every rule file path in placeholder lines.
+
+The special token `<title>` may be used anywhere in a label string and is replaced at runtime with the actual section or sub-section title (the text between the `=== ... ===` markers, without the equals signs). For example, `'**RULES for <title>:**'` becomes `**RULES for My Section:**` in the output file.
 
 ```php
 'reference_pretext' => [
@@ -157,8 +159,8 @@ Controls the bold label inserted before every rule file path in placeholder line
     // 'section'     — top-level === title === replacement lines.
     // 'sub_section' — inline Markdown sub-header replacement lines.
     'defaults' => [
-        'section'     => '**RULE:**',
-        'sub_section' => '**RULE:**',
+        'section'     => '**RULES for <title>:**',
+        'sub_section' => '**RULES:**',
     ],
 
     // Per-strategy overrides. Set a key to null to inherit from defaults.
@@ -166,29 +168,39 @@ Controls the bold label inserted before every rule file path in placeholder line
     // (a null value for an individual key still falls back to the default).
     'strategies' => [
         'full_section'       => null,
-        'nested_full'        => null,
-        'nested_subsections' => null,
-        'nested_split'       => null,
+        'nested_full'        => [
+            'section'     => null,                   // use defaults.section
+            'sub_section' => '**LOAD DIRECTIVE:**',
+        ],
+        'nested_subsections' => [
+            'section'     => null,                   // use defaults.section
+            'sub_section' => '**LOAD DIRECTIVE:**',
+        ],
+        'nested_split' => [
+            'section'     => '**Rules Directory:**',
+            'sub_section' => '**LOAD DIRECTIVE:**',
+        ],
         'auto'               => null,
     ],
 ],
 ```
 
-Example — different labels per strategy:
+Example — embedding the title and using custom labels per strategy:
 
 ```php
 'reference_pretext' => [
     'defaults' => [
-        'section'     => '**Rules Directory:**',
-        'sub_section' => '**RULE:**',
+        'section'     => '**For user requests which reference <title> load:**',
+        'sub_section' => '**RULES:**',
     ],
     'strategies' => [
         'nested_subsections' => [
-            'sub_section' => '**Directive:**',
+            'section'     => null,                   // use defaults.section
+            'sub_section' => '**LOAD DIRECTIVE:**',
         ],
         'nested_split' => [
-            'section'     => '**Rules Directory:**',
-            'sub_section' => '**Directive:**',
+            'section'     => '**Rules Directory for <title>:**',
+            'sub_section' => '**LOAD DIRECTIVE:**',
         ],
     ],
 ],
