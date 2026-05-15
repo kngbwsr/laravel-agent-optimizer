@@ -221,7 +221,9 @@ return [
       |   ],
       |
       */
-    'section_overrides' => [],
+    'section_overrides' => [
+        'filament/filament rules'        => 'nested_full',
+    ],
 
     /*
       |--------------------------------------------------------------------------
@@ -315,24 +317,30 @@ return [
       */
     'reference_pretext' => [
         'defaults' => [
-            'section' => '**RULES for <title>:**',
-            'sub_section' => '**LOAD RULES for <title>:**',
+            'section' => '**RULES Directory for <title> found at:**',
+            'sub_section' => '**Rules for <title> found at:**',
         ],
         'strategies' => [
-            'full_section' => null,
+            'full_section' => [
+              'section' => null,                   // use defaults.section
+              'sub_section' => null,
+            ],
             'nested_full' => [
                 'section' => null,                   // use defaults.section
-                'sub_section' => '**LOAD RULES for <title>:**',
+                'sub_section' => null,
             ],
             'nested_subsections' => [
                 'section' => null,                   // use defaults.section
-                'sub_section' => '**LOAD RULES for <title>:**',
+                'sub_section' => null,                   // use defaults.sub_section
             ],
             'nested_split' => [
-                'section' => '**Rules Directory for <title>:**',
-                'sub_section' => '**LOAD RULES for <title>:**',
+                'section' => null,                   // use defaults.section
+                'sub_section' => null,                   // use defaults.sub_section
             ],
-            'auto' => null,
+            'auto' => [
+                'section' => null,                   // use defaults.section
+                'sub_section' => null,
+            ],
         ],
     ],
 
