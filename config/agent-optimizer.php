@@ -101,6 +101,8 @@ return [
       |
       */
     'exceptions' => [
+        '.ai/_app-directive rules',
+        '.ai/laravel-filament-directive rules',
         'foundation rules',
         'boost rules',
         'php rules',
@@ -222,7 +224,7 @@ return [
       |
       */
     'section_overrides' => [
-        'filament/filament rules'        => 'nested_full',
+        'filament/filament rules' => 'nested_full',
     ],
 
     /*
@@ -322,8 +324,8 @@ return [
         ],
         'strategies' => [
             'full_section' => [
-              'section' => null,                   // use defaults.section
-              'sub_section' => null,
+                'section' => null,                   // use defaults.section
+                'sub_section' => null,
             ],
             'nested_full' => [
                 'section' => null,                   // use defaults.section

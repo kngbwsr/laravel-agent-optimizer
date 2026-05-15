@@ -33,7 +33,7 @@ class AgentDirectiveOptimizeCommand extends Command
      * CLAUDE.md) the first time any section in the file is extracted. Overridable via
      * config('agent-optimizer.agent_file_header').
      */
-    protected const DEFAULT_AGENT_FILE_HEADER = "> **[agent-optimizer]** Some sections in this file are token-optimized. Their content has been extracted to separate directive files that are **loaded on demand** — only when the user's request is relevant to that section.\n\n---\n\n";
+    protected const DEFAULT_AGENT_FILE_HEADER = "> **IMPORTANT:** Sections in this file (marked with <!-- agent-optimized -->), have been optimized for token and context use. Their content has been extracted to separate rule and directive files that are to be **loaded on demand** — only when the user's request is relevant to that section.\n\n---\n\n";
 
     /**
      * Default note prepended to every generated top-level rule file (_rule_*.md).
