@@ -14,7 +14,8 @@
         "illuminate/support": "^13.0"
     },
     "require-dev": {
-        "laravel/boost": "^2.4"
+        "laravel/boost": "^2.4",
+        "laravel/pint": "^1.29"
     },
     "autoload": {
         "psr-4": {

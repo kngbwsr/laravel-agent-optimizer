@@ -2,7 +2,7 @@
 
 return [
 
-  /*
+    /*
       |--------------------------------------------------------------------------
       | Base Path
       |--------------------------------------------------------------------------
@@ -18,9 +18,9 @@ return [
       | folder entirely, ensuring no stale files remain when config changes.
       |
       */
-  'base_path' => '.ai/rules',
+    'base_path' => '.ai/rules',
 
-  /*
+    /*
       |--------------------------------------------------------------------------
       | Rule File Prefix
       |--------------------------------------------------------------------------
@@ -33,9 +33,9 @@ return [
       | per-section folder (e.g. _rule_my-section/).
       |
       */
-  'rule_file_prefix' => '_rule_',
+    'rule_file_prefix' => '_rule_',
 
-  /*
+    /*
       |--------------------------------------------------------------------------
       | Subsection File Prefix
       |--------------------------------------------------------------------------
@@ -45,9 +45,9 @@ return [
       | names like _subsection_my-header.md.
       |
       */
-  'subsection_file_prefix' => '_subsection_',
+    'subsection_file_prefix' => '_subsection_',
 
-  /*
+    /*
       |--------------------------------------------------------------------------
       | Rule File Extension
       |--------------------------------------------------------------------------
@@ -59,9 +59,9 @@ return [
       | does not require a Markdown extension.
       |
       */
-  'rule_file_extension' => 'md',
+    'rule_file_extension' => 'md',
 
-  /*
+    /*
       |--------------------------------------------------------------------------
       | Source Directories
       |--------------------------------------------------------------------------
@@ -75,9 +75,9 @@ return [
       | subdirectories, e.g. ['/', 'docs', '.ai/guidelines'].
       |
       */
-  'source_directories' => ['/',],
+    'source_directories' => ['/'],
 
-  /*
+    /*
       |--------------------------------------------------------------------------
       | Exceptions
       |--------------------------------------------------------------------------
@@ -100,14 +100,14 @@ return [
       |   ],
       |
       */
-  'exceptions' => [
+    'exceptions' => [
         'foundation rules',
         'boost rules',
         'php rules',
         'laravel/core rules',
-  ],
+    ],
 
-  /*
+    /*
       |--------------------------------------------------------------------------
       | Line Threshold
       |--------------------------------------------------------------------------
@@ -123,9 +123,9 @@ return [
       | The CLI `--min-lines` option overrides this value at runtime when set.
       |
       */
-  'line_threshold' => 5,
+    'line_threshold' => 5,
 
-  /*
+    /*
       |--------------------------------------------------------------------------
       | Extraction Strategy
       |--------------------------------------------------------------------------
@@ -165,9 +165,9 @@ return [
       |       detected, behaves as 'nested_full'.
       |
       */
-  'extraction_strategy' => 'nested_subsections',
+    'extraction_strategy' => 'nested_subsections',
 
-  /*
+    /*
       |--------------------------------------------------------------------------
       | Auto Nested Strategy
       |--------------------------------------------------------------------------
@@ -180,9 +180,9 @@ return [
       | Falls back to 'nested_full' for any unrecognised value.
       |
       */
-  'auto_nested_strategy' => 'nested_full',
+    'auto_nested_strategy' => 'nested_full',
 
-  /*
+    /*
       |--------------------------------------------------------------------------
       | Subsection Line Threshold
       |--------------------------------------------------------------------------
@@ -198,9 +198,9 @@ return [
       | Must be >= 1. Setting to 1 extracts all detected sub-sections.
       |
       */
-  'subsection_line_threshold' => 3,
+    'subsection_line_threshold' => 3,
 
-  /*
+    /*
       |--------------------------------------------------------------------------
       | Section Overrides
       |--------------------------------------------------------------------------
@@ -221,9 +221,9 @@ return [
       |   ],
       |
       */
-  'section_overrides' => [],
+    'section_overrides' => [],
 
-  /*
+    /*
       |--------------------------------------------------------------------------
       | Auto-Run After Boost
       |--------------------------------------------------------------------------
@@ -236,9 +236,9 @@ return [
       | manually (or via your own composer scripts).
       |
       */
-  'auto_run_after_boost' => true,
+    'auto_run_after_boost' => true,
 
-  /*
+    /*
       |--------------------------------------------------------------------------
       | Boost Trigger Commands
       |--------------------------------------------------------------------------
@@ -249,12 +249,12 @@ return [
       | Boost commands.
       |
       */
-  'boost_trigger_commands' => [
-    'boost:update',
-    'boost:install',
-  ],
+    'boost_trigger_commands' => [
+        'boost:update',
+        'boost:install',
+    ],
 
-  /*
+    /*
       |--------------------------------------------------------------------------
       | Boost Wrapper Tag
       |--------------------------------------------------------------------------
@@ -270,9 +270,9 @@ return [
       | Default: 'laravel-boost-guidelines'
       |
       */
-  'boost_wrapper_tag' => 'laravel-boost-guidelines',
+    'boost_wrapper_tag' => 'laravel-boost-guidelines',
 
-  /*
+    /*
       |--------------------------------------------------------------------------
       | Reference Pretext Labels
       |--------------------------------------------------------------------------
@@ -315,24 +315,24 @@ return [
       */
     'reference_pretext' => [
         'defaults' => [
-            'section'     => '**RULES for <title>:**',
+            'section' => '**RULES for <title>:**',
             'sub_section' => '**RULES:**',
         ],
         'strategies' => [
-            'full_section'       => null,
-            'nested_full'        => [
-                'section'     => null,                   // use defaults.section
+            'full_section' => null,
+            'nested_full' => [
+                'section' => null,                   // use defaults.section
                 'sub_section' => '**LOAD DIRECTIVE:**',
             ],
             'nested_subsections' => [
-                'section'     => null,                   // use defaults.section
+                'section' => null,                   // use defaults.section
                 'sub_section' => '**LOAD DIRECTIVE:**',
             ],
             'nested_split' => [
-                'section'     => '**Rules Directory:**',
+                'section' => '**Rules Directory:**',
                 'sub_section' => '**LOAD DIRECTIVE:**',
             ],
-            'auto'               => null,
+            'auto' => null,
         ],
     ],
 
