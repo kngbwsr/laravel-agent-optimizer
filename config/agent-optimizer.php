@@ -316,21 +316,21 @@ return [
     'reference_pretext' => [
         'defaults' => [
             'section' => '**RULES for <title>:**',
-            'sub_section' => '**RULES:**',
+            'sub_section' => '**LOAD RULES for <title>:**',
         ],
         'strategies' => [
             'full_section' => null,
             'nested_full' => [
                 'section' => null,                   // use defaults.section
-                'sub_section' => '**LOAD DIRECTIVE:**',
+                'sub_section' => '**LOAD RULES for <title>:**',
             ],
             'nested_subsections' => [
                 'section' => null,                   // use defaults.section
-                'sub_section' => '**LOAD DIRECTIVE:**',
+                'sub_section' => '**LOAD RULES for <title>:**',
             ],
             'nested_split' => [
-                'section' => '**Rules Directory:**',
-                'sub_section' => '**LOAD DIRECTIVE:**',
+                'section' => '**Rules Directory for <title>:**',
+                'sub_section' => '**LOAD RULES for <title>:**',
             ],
             'auto' => null,
         ],

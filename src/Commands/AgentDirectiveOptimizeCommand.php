@@ -704,7 +704,7 @@ class AgentDirectiveOptimizeCommand extends Command
             $compositeSlug = $slug.'--'.$subSlug;
             $subFile = $rulePrefix.$slug.'/'.$this->subsectionFileName($subSlug);
             $headerPrefix = str_repeat('#', $header['level']);
-            $resolvedSubPretext = str_replace('<title>', $header['title'], $subSectionPretext);
+            $resolvedSubPretext = str_replace('<title>', $this->sanitizeTitleForLabel($header['title']), $subSectionPretext);
             $subPlaceholder = "{$headerPrefix} {$header['title']}\n\n{$resolvedSubPretext} {$folder}/{$subFile}\n";
 
             if (! isset($writtenSlugs[$compositeSlug])) {
@@ -812,7 +812,7 @@ class AgentDirectiveOptimizeCommand extends Command
                 $subRef = $this->rulesFolder().'/'.$rulePrefix.$slug.'/'.$this->subsectionFileName($subSlug);
                 $lines[] = "{$headerPrefix} {$header['title']}";
                 $lines[] = '';
-                $resolvedPretext = str_replace('<title>', $header['title'], $subSectionPretext);
+                $resolvedPretext = str_replace('<title>', $this->sanitizeTitleForLabel($header['title']), $subSectionPretext);
                 $lines[] = "{$resolvedPretext} {$subRef}";
                 $lines[] = '';
             } else {
@@ -1065,7 +1065,7 @@ class AgentDirectiveOptimizeCommand extends Command
             $label = $default;
         }
 
-        return $title !== '' ? str_replace('<title>', $title, $label) : $label;
+        return $title !== '' ? str_replace('<title>', $this->sanitizeTitleForLabel($title), $label) : $label;
     }
 
     /**
@@ -1100,6 +1100,15 @@ class AgentDirectiveOptimizeCommand extends Command
         $ext = ltrim((string) config('agent-optimizer.rule_file_extension', 'md'), '.');
 
         return $prefix.$slug.'.'.$ext;
+    }
+
+    /**
+     * Strip trailing " rules" (case-insensitive) from a title and trim
+     * whitespace before substituting it into a <title> placeholder.
+     */
+    protected function sanitizeTitleForLabel(string $title): string
+    {
+        return trim((string) preg_replace('/\s+rules\s*$/i', '', $title));
     }
 
     /**
